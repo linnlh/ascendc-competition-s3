@@ -31,4 +31,8 @@
 *.out
 *.app
 
+# build file
 build_out
+input
+output
+build

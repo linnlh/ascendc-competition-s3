@@ -1,23 +1,52 @@
 
 #include "softmax_tiling.h"
 #include "register/op_def_registry.h"
+#include "graph/utils/type_utils.h"
+#include "tiling/platform/platform_ascendc.h"
+#include "tiling/tiling_api.h"
 
+using namespace platform_ascendc;
+using namespace AscendC;
+
+constexpr int BLOCK_DIM = 1;
+constexpr int BLK_SIZE = 32;
 
 namespace optiling {
 static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
+    auto platform = PlatformAscendC(context->GetPlatformInfo());
+    uint32_t dataTypeSize = 0;
+    ge::TypeUtils::GetDataTypeLength(
+        context->GetInputDesc(0)->GetDataType(),
+        dataTypeSize
+    );
 
-  SoftmaxTilingData tiling;
-  const gert::StorageShape* x1_shape = context->GetInputShape(0);
-  int32_t data_sz = 1;
-  for (int i = 0; i < x1_shape->GetStorageShape().GetDimNum(); i++)
-    data_sz *= x1_shape->GetStorageShape().GetDim(i);
-  tiling.set_size(data_sz);
-  context->SetBlockDim(8);
-  tiling.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
-  context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
+    int64_t totalSize = context->GetInputTensor(0)->GetShapeSize();
+    auto xShape = context->GetInputShape(0)->GetStorageShape();
+    int64_t width = xShape.GetDim(xShape.GetDimNum() - 1);
+    int64_t widthAlign32 = (width * dataTypeSize + BLK_SIZE - 1) / BLK_SIZE * BLK_SIZE / dataTypeSize;
+    int64_t height = totalSize / width;
 
-  return ge::GRAPH_SUCCESS;
+    SoftmaxTilingData tiling;
+    tiling.set_width(width);
+    tiling.set_widthAlign32(widthAlign32);
+    tiling.set_height(height);
+    ge::Shape srcShape({1, widthAlign32});
+    const uint32_t localWorkSpaceSize = GetSoftMaxMinTmpSize(
+        srcShape, dataTypeSize, false
+    );
+    SoftMaxTilingFunc(
+        srcShape, dataTypeSize, localWorkSpaceSize, tiling.softmaxTilingData
+    );
+
+    tiling.SaveToBuffer(
+        context->GetRawTilingData()->GetData(),
+        context->GetRawTilingData()->GetCapacity()
+    );
+    context->SetBlockDim(BLOCK_DIM);
+    context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
+
+    return ge::GRAPH_SUCCESS;
 }
 }
 
