@@ -1,0 +1,78 @@
+[
+    {
+        "op": "NonMaxSuppression",
+        "language": "cpp",
+        "input_desc": [
+            {
+                "name": "boxes",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            },
+            {
+                "name": "scores",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            },
+            {
+                "name": "max_output_boxes_per_class",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ]
+            },
+            {
+                "name": "iou_threshold",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            },
+            {
+                "name": "score_threshold",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "selected_indices",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ]
+            }
+        ],
+        "attr": [                                                                   
+            {
+                "name": "cneter_point_box",
+                "param_type": "optional",
+                "type": "int",
+                "default_value": 0
+            }
+        ]
+    }
+]
