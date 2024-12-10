@@ -25,7 +25,6 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     int64_t batchSize = scoreShape.GetDim(0);
     int64_t classNum = scoreShape.GetDim(1);
     int64_t boxNum = scoreShape.GetDim(2);
-    int64_t boxNumAlign32 = (boxNum * dataTypeSize + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE / dataTypeSize;
 
     NonMaxSuppressionTilingData tiling;
     tiling.set_batchSize(batchSize);
