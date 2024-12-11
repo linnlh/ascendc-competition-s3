@@ -15,14 +15,18 @@ constexpr int BUFFER_NUM = 1;
 static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
     auto platform = PlatformAscendC(context->GetPlatformInfo());
-    uint32_t dataTypeSize = 0;
+    uint64_t ubSize;
+    platform.GetCoreMemSize(CoreMemType::UB, ubSize);
+    uint32_t dtypeSize = 0;
     ge::TypeUtils::GetDataTypeLength(
         context->GetInputDesc(0)->GetDataType(),
-        dataTypeSize
+        dtypeSize
     );
 
-    int64_t totalLength = context->GetInputTensor(0)->GetShapeSize();
     AsinhTilingData tiling;
+    int64_t totalLength = context->GetInputTensor(0)->GetShapeSize();
+    // int64_t tileSize = ubSize / (12 + 3 * BUFFER_NUM * dtypeSize) / 32 * 32;
+    // int64_t tileLength = tileSize / dtypeSize;
     int64_t tileLength = 1024;
     if (tileLength > totalLength) {
         tileLength = totalLength;
