@@ -1,0 +1,30 @@
+#!/usr/bin/python3
+# -*- coding:utf-8 -*-
+# Copyright 2022-2023 Huawei Technologies Co., Ltd
+import numpy as np
+import tensorflow as tf
+import os
+    
+os.system("mkdir -p input")
+os.system("mkdir -p output")
+
+shape = [128]
+minval = 1
+maxval = 3
+dtype = tf.float32
+
+def gen_golden_data_simple():
+
+    input_y = tf.random.uniform(shape, minval=minval, maxval=maxval, dtype=dtype)
+    input_y.numpy().tofile("./input/input_y.bin")
+
+    input_dy = tf.random.uniform(shape, minval=minval, maxval=maxval, dtype=dtype)
+    input_dy.numpy().tofile("./input/input_dy.bin")
+
+    golden = input_dy / tf.raw_ops.Cosh(x=input_y)
+    golden.numpy().tofile("./output/golden.bin")
+
+
+if __name__ == "__main__":
+    gen_golden_data_simple()
+
