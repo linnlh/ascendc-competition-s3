@@ -4,30 +4,37 @@
 #include "graph/utils/type_utils.h"
 #include "tiling/platform/platform_ascendc.h"
 
+namespace optiling {
+
 using namespace platform_ascendc;
 
 constexpr int BLOCK_DIM = 1;
-constexpr int BLK_SIZE = 32;
+constexpr int BUFFER_NUM = 2;
 
-namespace optiling {
 static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
-    uint32_t dataTypeSize = 0;
+    auto platform = PlatformAscendC(context->GetPlatformInfo());
+    uint64_t ubSize;
+    platform.GetCoreMemSize(CoreMemType::UB, ubSize);
+    uint32_t dtypeSize = 0;
     ge::TypeUtils::GetDataTypeLength(
         context->GetInputDesc(0)->GetDataType(),
-        dataTypeSize
+        dtypeSize
     );
 
-    int64_t totalSize = context->GetInputTensor(0)->GetShapeSize();
-    auto x1Shape = context->GetInputShape(0)->GetStorageShape();
-    int64_t width = x1Shape.GetDim(x1Shape.GetDimNum() - 1);
-    int64_t widthAlign32 = (width * dataTypeSize + BLK_SIZE - 1) / BLK_SIZE * BLK_SIZE / dataTypeSize;
-    int64_t height = totalSize / width;
-    
     DivTilingData tiling;
-    tiling.set_width(width);
-    tiling.set_widthAlign32(widthAlign32);
-    tiling.set_height(height);
+    int64_t totalLength = context->GetInputTensor(0)->GetShapeSize();
+    int64_t tileSize = ubSize / (8 + 3 * BUFFER_NUM * dtypeSize) / 32 * 32;
+    int64_t tileLength = tileSize / dtypeSize;
+    // int64_t tileLength = 1024;
+    if (tileLength > totalLength) {
+        tileLength = totalLength;
+    }
+    int64_t tileNum = totalLength / tileLength;
+    int64_t tailTileLength = totalLength % tileLength;
+    tiling.set_tileLength(tileLength);
+    tiling.set_tileNum(tileNum);
+    tiling.set_tailTileLength(tailTileLength);
 
     tiling.SaveToBuffer(
         context->GetRawTilingData()->GetData(),

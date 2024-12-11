@@ -3,9 +3,9 @@
 
 namespace optiling {
 BEGIN_TILING_DATA_DEF(DivTilingData)
-  TILING_DATA_FIELD_DEF(int64_t, width);
-  TILING_DATA_FIELD_DEF(int64_t, widthAlign32);
-  TILING_DATA_FIELD_DEF(int64_t, height);
+    TILING_DATA_FIELD_DEF(int64_t, tileLength);
+    TILING_DATA_FIELD_DEF(int64_t, tileNum);
+    TILING_DATA_FIELD_DEF(int64_t, tailTileLength);
 END_TILING_DATA_DEF;
 
 REGISTER_TILING_DATA_CLASS(Div, DivTilingData)

@@ -15,16 +15,12 @@ run_install() {
 
 run_test() {
     local op=$(echo "$op" | sed -e "s/\b\(.\)/\u\1/")
-    pushd "tests" > /dev/null
-    for case in ./${op}*; do
-        if [ -d $case ]; then
-            echo "=> running $case..."
-            pushd $case > /dev/null
-            source run.sh
-            popd > /dev/null
-        fi
+    find "tests" -maxdepth 1 -type d ! -path "tests" | while read -r case; do
+        echo "=> running test: $(basename $case)"
+        pushd $case > /dev/null
+        source run.sh
+        popd > /dev/null
     done
-    popd > /dev/null
 }
 
 case $1 in
