@@ -36,3 +36,6 @@ build_out
 input
 output
 build
+
+# py
+__pycache__
