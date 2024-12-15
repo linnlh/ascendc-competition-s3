@@ -36,6 +36,19 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     tiling.set_tileNum(tileNum);
     tiling.set_tailTileLength(tailTileLength);
 
+    auto x1Shape = context->GetInputShape(0)->GetStorageShape();
+    auto x2Shape = context->GetInputShape(1)->GetStorageShape();
+    int64_t x1ShapePtr[10];
+    int64_t x2ShapePtr[10];
+    int64_t dimNum = x1Shape.GetDimNum();
+    for (int i = 0; i < dimNum; i++) {
+        x1ShapePtr[i] = x1Shape.GetDim(i);
+        x2ShapePtr[i] = x2Shape.GetDim(i);
+    }
+    tiling.set_x1Shape(x1ShapePtr);
+    tiling.set_x2Shape(x2ShapePtr);
+    tiling.set_dimNum(dimNum);
+ 
     tiling.SaveToBuffer(
         context->GetRawTilingData()->GetData(),
         context->GetRawTilingData()->GetCapacity()

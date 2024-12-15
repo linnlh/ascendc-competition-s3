@@ -12,10 +12,12 @@ msopgen gen -i div.json -f pytorch -c ai_core-ascend310B -lan cpp -out div/
 
 ## Note
 
-`case4` 失败
-
 - case1: fp16
 - case2: fp32
 - case3: int8
 - case4: fp16
 - case5: int32
+
+## TODO
+
+- [ ] 整理 `div` 整体代码

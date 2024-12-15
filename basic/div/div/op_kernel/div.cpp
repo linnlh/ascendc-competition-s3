@@ -17,7 +17,10 @@ public:
         GM_ADDR z,
         int64_t tileLength,
         int64_t tileNum,
-        int64_t tailTileLength
+        int64_t tailTileLength,
+        int64_t* x1Shape,
+        int64_t* x2Shape,
+        int64_t dimNum
     ) {
         x1Gm.SetGlobalBuffer((__gm__ float*)x1);
         x2Gm.SetGlobalBuffer((__gm__ float*)x2);
@@ -107,7 +110,10 @@ public:
         GM_ADDR z,
         int64_t tileLength,
         int64_t tileNum,
-        int64_t tailTileLength
+        int64_t tailTileLength,
+        int64_t* x1Shape,
+        int64_t* x2Shape,
+        int64_t dimNum
     ) {
         x1Gm.SetGlobalBuffer((__gm__ half*)x1);
         x2Gm.SetGlobalBuffer((__gm__ half*)x2);
@@ -125,21 +131,53 @@ public:
         this->tailTileLength = tailTileLength;
         this->tileLengthAlign32 = tileLengthAlign32;
         this->tailTileLengthAlign32 = (tailTileLength + 15) / 16 * 16;
+
+        this->dimNum = dimNum;
+        this->x1Shape = x1Shape;
+        this->x2Shape = x2Shape;
+        for (int i = dimNum - 1; i >= 0; i--) {
+            if (x1Shape[i] >= x2Shape[i]) {
+                outShape[i] = x1Shape[i];
+            } else {
+                outShape[i] = x2Shape[i];
+            }
+        }
+        x1Strides[dimNum - 1] = 1;
+        x2Strides[dimNum - 1] = 1;
+        outStrides[dimNum - 1] = 1;
+        this->totalNum = outShape[dimNum - 1];
+        for (int i = dimNum - 2; i >= 0; i--) {
+            x1Strides[i] = x1Shape[i + 1] * x1Strides[i + 1];
+            x2Strides[i] = x2Shape[i + 1] * x2Strides[i + 1];
+            outStrides[i] = outShape[i + 1] * outStrides[i + 1];
+            totalNum *= outShape[i];
+        }
     }
     __aicore__ inline void Process() {
-        for (int i = 0; i < tileNum; i++) {
-            CopyIn(i * tileLength, tileLength, 1);
-            Compute(tileLengthAlign32);
-            CopyOut(i * tileLength, tileLength, 1);
-        }
-        if (tailTileLength > 0) {
-            CopyIn(tileNum * tileLength, tailTileLength, 1);
-            Compute(tailTileLengthAlign32);
-            CopyOut(tileNum * tileLength, tailTileLength, 1);
+        for (int i = 0; i < totalNum; i++) {
+            int x1Offset = 0;
+            int x2Offset = 0;
+            int outOffset = 0;
+            for (int j = 0; j < dimNum; j++) {
+                int index = i / outStrides[j] % outShape[j];
+                x1Offset += (index % x1Shape[j]) * x1Strides[j];
+                x2Offset += (index % x2Shape[j]) * x2Strides[j];
+                outOffset += index * outStrides[j];
+            }
+            float x1 = (float)(x1Gm.GetValue(x1Offset));
+            float x2 = (float)(x2Gm.GetValue(x2Offset));
+            float val = x1 / x2;
+            zGm.SetValue(outOffset, (half)val);
         }
     }
 
 private:
+    __aicore__ inline void PrintArray(int64_t* arr, int64_t len) {
+        for (int i = 0; i < len; i++) {
+            printf("%ld, ", arr[i]);
+        }
+        printf("\n");
+    }
     __aicore__ inline void CopyIn(
         uint64_t offset,
         uint32_t length,
@@ -165,7 +203,8 @@ private:
         Cast(x1fp32, x1, RoundMode::CAST_NONE, computeLen);
         Cast(x2fp32, x2, RoundMode::CAST_NONE, computeLen);
         Div(x1fp32, x1fp32, x2fp32, computeLen);
-        Cast(z, x1fp32, RoundMode::CAST_RINT, computeLen);
+        Cast(z, x1fp32, RoundMode::CAST_NONE, computeLen);
+
         zQueue.EnQue<half>(z);
         x1Queue.FreeTensor(x1);
         x2Queue.FreeTensor(x2);
@@ -194,6 +233,15 @@ private:
     int64_t tailTileLength;
     int64_t tileLengthAlign32;
     int64_t tailTileLengthAlign32;
+
+    int64_t dimNum;
+    int64_t* x1Shape;
+    int64_t* x2Shape;
+    int64_t outShape[10];
+    int64_t x1Strides[10];
+    int64_t x2Strides[10];
+    int64_t outStrides[10];
+    int64_t totalNum;
 };
 
 template <>
@@ -206,7 +254,10 @@ public:
         GM_ADDR z,
         int64_t tileLength,
         int64_t tileNum,
-        int64_t tailTileLength
+        int64_t tailTileLength,
+        int64_t* x1Shape,
+        int64_t* x2Shape,
+        int64_t dimNum
     ) {
         x1Gm.SetGlobalBuffer((__gm__ int32_t*)x1);
         x2Gm.SetGlobalBuffer((__gm__ int32_t*)x2);
@@ -305,7 +356,10 @@ public:
         GM_ADDR z,
         int64_t tileLength,
         int64_t tileNum,
-        int64_t tailTileLength
+        int64_t tailTileLength,
+        int64_t* x1Shape,
+        int64_t* x2Shape,
+        int64_t dimNum
     ) {
         x1Gm.SetGlobalBuffer((__gm__ int8_t*)x1);
         x2Gm.SetGlobalBuffer((__gm__ int8_t*)x2);
@@ -329,6 +383,6 @@ private:
 extern "C" __global__ __aicore__ void div(GM_ADDR x1, GM_ADDR x2, GM_ADDR z, GM_ADDR workspace, GM_ADDR tiling) {
     GET_TILING_DATA(t, tiling);
     KernelDiv<DTYPE_X1> op;
-    op.Init(x1, x2, z, t.tileLength, t.tileNum, t.tailTileLength);
+    op.Init(x1, x2, z, t.tileLength, t.tileNum, t.tailTileLength, t.x1Shape, t.x2Shape, t.dimNum);
     op.Process();
 }
