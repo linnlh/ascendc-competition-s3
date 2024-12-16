@@ -9,17 +9,18 @@ tf.random.set_seed(29)
 os.system("mkdir -p input")
 os.system("mkdir -p output")
 
-shape = [3333]
+shape1 = [32, 16, 1]
+shape2 = [32, 16, 8]
 minval = -10
 maxval = 10
 dtype = tf.float16
 
 def gen_golden_data_simple():
 
-    input_x = tf.random.uniform(shape, minval=minval, maxval=maxval, dtype=dtype)
+    input_x = tf.random.uniform(shape1, minval=minval, maxval=maxval, dtype=dtype)
     input_x.numpy().tofile("./input/input_x.bin")
 
-    tmp = tf.random.uniform(shape, minval=0, maxval=0.01, dtype=dtype)
+    tmp = tf.random.uniform(shape2, minval=0, maxval=0.01, dtype=dtype)
     input_y = input_x - tmp
     input_y.numpy().tofile("./input/input_y.bin")
 

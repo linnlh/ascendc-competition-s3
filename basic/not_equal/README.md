@@ -12,7 +12,7 @@ msopgen gen -i not_equal.json -f pytorch -c ai_core-ascend310B -lan cpp -out not
 
 ## TODO
 
-case4 无法通过，性能测试失败
+- [ ] min(max(x1, x2) - min(x1, x2), 1) 可以减少 buffer 的使用
 
 ## Note
 - case1: fp16
