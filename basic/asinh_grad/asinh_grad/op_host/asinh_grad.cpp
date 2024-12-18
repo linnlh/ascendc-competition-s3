@@ -24,9 +24,8 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
 
     AsinhGradTilingData tiling;
     int64_t totalLength = context->GetInputTensor(0)->GetShapeSize();
-    int64_t tileSize = ubSize / (12 + 3 * BUFFER_NUM * dtypeSize) / 32 * 32;
-    int64_t tileLength = tileSize / dtypeSize;
-    // int64_t tileLength = 4096;
+    int64_t tileSize = (ubSize - 64) / (12 + 3 * BUFFER_NUM * dtypeSize);
+    int64_t tileLength = tileSize;
     if (tileLength > totalLength) {
         tileLength = totalLength;
     }
@@ -35,6 +34,9 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     tiling.set_tileLength(tileLength);
     tiling.set_tileNum(tileNum);
     tiling.set_tailTileLength(tailTileLength);
+    // printf("tileLength: %ld\n", tileLength);
+    // printf("tileNum: %ld\n", tileNum);
+    // printf("tailTileLength: %ld\n", tailTileLength);
 
     tiling.SaveToBuffer(
         context->GetRawTilingData()->GetData(),
@@ -42,6 +44,8 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     );
     context->SetBlockDim(BLOCK_DIM);
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
+    size_t *currentWorkspace = context->GetWorkspaceSizes(1);
+    currentWorkspace[0] = 0;
 
     return ge::GRAPH_SUCCESS;
 }
