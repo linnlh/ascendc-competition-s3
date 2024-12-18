@@ -16,7 +16,7 @@
                     "float16",
                     "float32",
                     "int32",
-                    "int8"
+                    "uint8"
                 ]
             },
             {
@@ -32,7 +32,7 @@
                     "float16",
                     "float32",
                     "int32",
-                    "int8"
+                    "uint8"
                 ]
             }
         ],

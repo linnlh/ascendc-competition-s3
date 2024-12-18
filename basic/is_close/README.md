@@ -3,7 +3,7 @@
 ## 生成工程
 
 ```bash
-msopgen gen -i is_close.json -f pytorch -c ai_core-ascend310B -lan cpp -out is_close/
+msopgen gen -i is_close.json -c ai_core-ascend310B -lan cpp -out is_close/
 ```
 
 修改 `CMakePresets.json` 下 `ASCEND_CANN_PACKAGE_PATH` 为 `CANN` 的实际安装路径
@@ -15,5 +15,5 @@ msopgen gen -i is_close.json -f pytorch -c ai_core-ascend310B -lan cpp -out is_c
 - case1: fp16 pass
 - case2: fp32 pass
 - case3: int32 pass
-- case4: 
+- case4: uint8_t pass
 - case5: fp32 pass
