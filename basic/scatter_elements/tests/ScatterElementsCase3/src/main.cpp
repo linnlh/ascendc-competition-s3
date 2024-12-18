@@ -25,10 +25,10 @@ OperatorDesc CreateOpDesc()
 {
     // define operator
     OperatorDesc opDesc;
-    opDesc.axis = 1;
+    opDesc.axis = 0;
     opDesc.reduce = "add";
-    std::vector<int64_t> shape_var {32, 64};
-    std::vector<int64_t> shape_indices {32, 32};
+    std::vector<int64_t> shape_var {32, 64, 64};
+    std::vector<int64_t> shape_indices {32, 32, 32};
  
     aclDataType dataType = ACL_FLOAT16;
     aclDataType indicesType = ACL_INT32;

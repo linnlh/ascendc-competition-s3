@@ -25,75 +25,42 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
 
     ScatterElementsTilingData tiling;
     auto attrs = context->GetAttrs();
-    const int64_t* axis = attrs->GetInt(0);
-    const char* reduce = attrs->GetStr(1);
+    const int64_t* axisPtr = attrs->GetInt(0);
+    const char* reducePtr = attrs->GetStr(1);
+    int64_t axis = 0;
+    if (axisPtr != nullptr) {
+        axis = *axisPtr;
+    }
     int64_t mode = 0;
-    if (reduce != nullptr && strcmp(reduce, "add") == 0) {
+    if (reducePtr != nullptr && strcmp(reducePtr, "add") == 0) {
         mode = 1;
     }
-    else if (reduce != nullptr && strcmp(reduce, "mutiply") == 0) {
+    else if (reducePtr != nullptr && strcmp(reducePtr, "multiply") == 0) {
         mode = 2;
     }
 
     auto varShape = context->GetInputShape(0)->GetStorageShape();
     auto indicesShape = context->GetInputShape(1)->GetStorageShape();
-    int64_t varLen = varShape.GetShapeSize();
-    int64_t indicesLen = indicesShape.GetShapeSize();
-    
-    int64_t varStride = varLen;
-    int64_t indiceStride = indicesLen;
-    for (int i = 0; i < (*axis + 1); i++) {
-        varStride /= varShape.GetDim(i);
-        indiceStride /= indicesShape.GetDim(i);
-    }
-    uint16_t varShapePtr[10], indicesShapePtr[10];
+    int64_t varShapePtr[10], indicesShapePtr[10];
+    int64_t dimNum = varShape.GetDimNum();
     for (int i = 0; i < varShape.GetDimNum(); i++) {
         varShapePtr[i] = varShape[i];
         indicesShapePtr[i] = indicesShape[i];
     }
-    // int64_t varStride = varLen / varShape.GetDim(0);
-    // int64_t updateStride = indicesLen / indicesShape.GetDim(0);
 
-
-    int64_t tileLength = varShape.GetDim(*axis);
-    // if (tileLength > indicesLen) {
-    //     tileLength = indicesLen;
-    // }
-    int64_t varTileLen = varShape.GetDim(*axis);
-    int64_t indiceTileLen = indicesShape.GetDim(*axis);
-    // int64_t indiceTileLen = indicesShape.GetDim(indicesShape.GetDimNum() - 1);
-    // int64_t updateTileLen = indiceTileLen;
-    int64_t tileNum = indicesLen / indiceTileLen;
-    int64_t tailTileLength = 0;
-    // printf("[tileNum]: %ld\n", tileNum);
-    // printf("[varLen]: %ld\n", varLen);
-    // printf("[indicesLen]: %ld\n", indicesLen);
-    // printf("[varTileLen]: %ld\n", varTileLen);
-    // printf("[indiceTileLen]: %ld\n", indiceTileLen);
-    // printf("[varStride]: %ld\n", varStride);
-    // printf("[indiceStride]: %ld\n", indiceStride);
-    // printf("[mode] %ld\n", mode);
-
-    tiling.set_tileLength(tileLength);
-    tiling.set_tileNum(tileNum);
-    tiling.set_tailTileLength(tailTileLength);
-    tiling.set_varLen(varLen);
-    tiling.set_indicesLen(indicesLen);
-    tiling.set_varStride(varStride);
-    tiling.set_indiceStride(indiceStride);
-    tiling.set_mode(mode);
-    tiling.set_varTileLen(varTileLen);
-    tiling.set_indiceTileLen(indiceTileLen);
     tiling.set_varShape(varShapePtr);
-    tiling.set_varShapeLen(varShape.GetDimNum());
     tiling.set_indicesShape(indicesShapePtr);
-    tiling.set_indicesShapeLen(indicesShape.GetDimNum());
+    tiling.set_dimNum(dimNum);
+    tiling.set_mode(mode);
+    tiling.set_axis(axis);
     tiling.SaveToBuffer(
         context->GetRawTilingData()->GetData(),
         context->GetRawTilingData()->GetCapacity()
     );
     context->SetBlockDim(BLOCK_DIM);
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
+    size_t *currentWorkspace = context->GetWorkspaceSizes(1);
+    currentWorkspace[0] = 0;
 
     return ge::GRAPH_SUCCESS;
 }

@@ -80,7 +80,8 @@
             {
                 "name": "reduce",
                 "param_type": "optional",
-                "type": "string"
+                "type": "string",
+                "default_value": "none"
             }
         ]
     }
