@@ -11,5 +11,3 @@ msopgen gen -i replication_pad2d.json -f pytorch -c ai_core-ascend310B -lan cpp 
 > -f 指定为 aclnn 时框架代码只生成 .so 文件，不生成 .run 文件
 
 ## Note
-
-性能测试失败
