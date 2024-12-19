@@ -10,7 +10,11 @@ namespace optiling {
 using namespace platform_ascendc;
 
 constexpr int BLOCK_DIM = 1;
-constexpr int BUFFER_NUM = 1;
+constexpr int BUFFER_NUM = 2;
+
+int64_t RoundUp32(int64_t val) {
+    return (val + 31) / 32 * 32;
+}
 
 static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
@@ -22,20 +26,30 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
         context->GetInputDesc(0)->GetDataType(),
         dtypeSize
     );
+    int64_t elemPerBlk = 32 / dtypeSize;
 
     ReplicationPad2dTilingData tiling;
-    auto xShape = context->GetInputShape(0)->GetStorageShape();
+    auto paddings = context->GetInputTensor(1)->GetData<int32_t>();
+    auto shape = context->GetInputShape(0)->GetStorageShape();
     int64_t totalLen = context->GetInputTensor(0)->GetShapeSize();
-    // int64_t tileSize = ubSize / (12 + 3 * BUFFER_NUM * dtypeSize) / 32 * 32;
-    // int64_t tileLength = tileSize / dtypeSize;
-    int64_t width = xShape.GetDim(xShape.GetDimNum() - 1);
-    int64_t height = xShape.GetDim(xShape.GetDimNum() - 2);
+    int64_t width = shape.GetDim(shape.GetDimNum() - 1);
+    int64_t height = shape.GetDim(shape.GetDimNum() - 2);
     int64_t batch = totalLen / (width * height);
-    int64_t tileLen = width;
-    tiling.set_batch(batch);
+
+    int64_t leftPaddingAlign32 = RoundUp32(paddings[0] * dtypeSize);
+    int64_t rightPaddingAlign32 = RoundUp32(paddings[1] * dtypeSize);
+    int64_t widthAlign32 = RoundUp32(width * dtypeSize);
+    int64_t tileLen = (ubSize - 128) / ((widthAlign32 + leftPaddingAlign32 + rightPaddingAlign32) * BUFFER_NUM);
+    if (tileLen > batch) {
+        tileLen = batch;
+    }
+    int64_t tileNum = batch / tileLen;
+    int64_t tailTileLen = batch % tileLen;
     tiling.set_width(width);
     tiling.set_height(height);
     tiling.set_tileLen(tileLen);
+    tiling.set_tileNum(tileNum);
+    tiling.set_tailTileLen(tailTileLen);
 
     tiling.SaveToBuffer(
         context->GetRawTilingData()->GetData(),
