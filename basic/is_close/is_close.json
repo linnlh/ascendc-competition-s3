@@ -1,0 +1,78 @@
+[
+    {
+        "op": "IsClose",
+        "language": "cpp",
+        "input_desc": [
+            {
+                "name": "x1",
+                "param_type": "required",
+                "format": [
+                    "ND",
+                    "ND",
+                    "ND",
+                    "ND"
+                ],
+                "type": [
+                    "float16",
+                    "float32",
+                    "int32",
+                    "uint8"
+                ]
+            },
+            {
+                "name": "x2",
+                "param_type": "required",
+                "format": [
+                    "ND",
+                    "ND",
+                    "ND",
+                    "ND"
+                ],
+                "type": [
+                    "float16",
+                    "float32",
+                    "int32",
+                    "uint8"
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "param_type": "required",
+                "format": [
+                    "ND",
+                    "ND",
+                    "ND",
+                    "ND"
+                ],
+                "type": [
+                    "bool",
+                    "bool",
+                    "bool",
+                    "bool"
+                ]
+            }
+        ],
+        "attr": [                                                                   
+            {
+                "name": "rtol",
+                "param_type": "optional",
+                "type": "float",
+                "default_value": 1e-5
+            },
+            {
+                "name": "atol",
+                "param_type": "optional",
+                "type": "float",
+                "default_value": 1e-8
+            },
+            {
+                "name": "equal_nan",
+                "param_type": "optional",
+                "type": "bool",
+                "default_value": false
+            }
+        ]
+    }
+]
