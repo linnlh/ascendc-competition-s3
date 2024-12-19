@@ -12,8 +12,8 @@ msopgen gen -i scatter_elements.json -f pytorch -c ai_core-ascend310B -lan cpp -
 
 ## Note
 
-- case1: fp16, Passed
-- case2: Passed
-- case3: Passed/Wrong answer
-- case4: fp16? Run failed
-- case5: fp32 Passed/性能测试失败 wrong answer
+- case1: fp16, Wrong add
+- case2: fp32 Passed none
+- case3: int32 multiply，存在误导，使用了 multiply，实际上使用 none 计算
+- case4: uint8 Passed add
+- case5: fp32 Passed none

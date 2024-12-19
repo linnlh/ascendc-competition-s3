@@ -30,7 +30,7 @@ OperatorDesc CreateOpDesc()
     std::vector<int64_t> shape_var {32, 64, 64};
     std::vector<int64_t> shape_indices {32, 32, 32};
  
-    aclDataType dataType = ACL_FLOAT16;
+    aclDataType dataType = ACL_FLOAT;
     aclDataType indicesType = ACL_INT32;
     aclFormat format = ACL_FORMAT_ND;
     opDesc.AddInputTensorDesc(dataType, shape_var.size(), shape_var.data(), format);

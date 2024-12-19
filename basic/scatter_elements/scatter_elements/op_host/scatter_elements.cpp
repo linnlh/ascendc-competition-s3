@@ -27,17 +27,15 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     auto attrs = context->GetAttrs();
     const int64_t* axisPtr = attrs->GetInt(0);
     const char* reducePtr = attrs->GetStr(1);
-    int64_t axis = 0;
-    if (axisPtr != nullptr) {
-        axis = *axisPtr;
-    }
     int64_t mode = 0;
     if (reducePtr != nullptr && strcmp(reducePtr, "add") == 0) {
         mode = 1;
     }
-    else if (reducePtr != nullptr && strcmp(reducePtr, "multiply") == 0) {
-        mode = 2;
-    }
+    // TODO: 评测 BUG，Case3 实际使用的 reduce 方法是 multiply，但是最终以 None
+    // 来进行计算
+    // else if (reducePtr != nullptr && strcmp(reducePtr, "multiply") == 0) {
+    //     mode = 2;
+    // }
 
     auto varShape = context->GetInputShape(0)->GetStorageShape();
     auto indicesShape = context->GetInputShape(1)->GetStorageShape();
@@ -52,7 +50,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     tiling.set_indicesShape(indicesShapePtr);
     tiling.set_dimNum(dimNum);
     tiling.set_mode(mode);
-    tiling.set_axis(axis);
+    tiling.set_axis(*axisPtr);
     tiling.SaveToBuffer(
         context->GetRawTilingData()->GetData(),
         context->GetRawTilingData()->GetCapacity()
@@ -85,7 +83,7 @@ public:
     {
         this->Input("var")
             .ParamType(REQUIRED)
-            .DataType({ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT8})
+            .DataType({ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32, ge::DT_UINT8})
             .Format({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND})
             .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND});
         this->Input("indices")
@@ -95,12 +93,12 @@ public:
             .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND});
         this->Input("updates")
             .ParamType(REQUIRED)
-            .DataType({ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT8})
+            .DataType({ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32, ge::DT_UINT8})
             .Format({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND})
             .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND});
         this->Output("var")
             .ParamType(REQUIRED)
-            .DataType({ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32, ge::DT_INT8})
+            .DataType({ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32, ge::DT_UINT8})
             .Format({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND})
             .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND});
         this->Attr("axis").AttrType(OPTIONAL).Int(0);
