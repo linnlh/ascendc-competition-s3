@@ -1,0 +1,64 @@
+[
+    {
+        "op": "NLLLoss",
+        "language": "cpp",
+        "input_desc": [
+            {
+                "name": "x",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            },
+            {
+                "name": "target",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ]
+            },
+            {
+                "name": "weight",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "param_type": "required",
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ]
+            }
+        ],
+        "attr": [                                                                   
+            {
+                "name": "reduction",
+                "param_type": "optional",
+                "type": "string",
+                "default_value": "mean"
+            },
+            {
+                "name": "ignore_index",
+                "param_type": "optional",
+                "type": "int",
+                "default_value": -100
+            }
+        ]
+    }
+]
