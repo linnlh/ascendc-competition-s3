@@ -15,8 +15,8 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     auto platform = PlatformAscendC(context->GetPlatformInfo());
     uint64_t ubSize;
     platform.GetCoreMemSize(CoreMemType::UB, ubSize);
-    // auto coreNum = platform.GetCoreNum();
-    int64_t coreNum = 1;
+    auto coreNum = platform.GetCoreNum();
+    // int64_t coreNum = 1;
     uint32_t dtypeSize = 0;
     ge::TypeUtils::GetDataTypeLength(
         context->GetInputDesc(0)->GetDataType(),
@@ -29,13 +29,28 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     uint32_t clsNum = xShape.GetDim(xShape.GetDimNum() - 1);
     uint32_t clsNumAlign8 = (clsNum + 7) / 8 * 8;
     uint32_t batchSize = totalSize / clsNum;
-    uint32_t bigCoreNum = 1;
+    if (batchSize < coreNum) {
+        coreNum = batchSize;
+    }
+    uint32_t tileLen = (ubSize - coreNum * 8 * BUFFER_NUM - (clsNumAlign8 * 4)) / (12 + (4 * BUFFER_NUM) + (4 * clsNumAlign8 * BUFFER_NUM)) / 8 * 8;
+    uint32_t remainBatch = batchSize % coreNum;
+    uint32_t bigCoreNum = (remainBatch == 0) ? coreNum : remainBatch;
     tiling.set_bigCoreNum(bigCoreNum);
 
-    ubSize = ubSize / coreNum;
-    uint32_t bigCoreBatchSize = batchSize;
-    uint32_t bigCoreTileLen = (ubSize - (64 * BUFFER_NUM) - (clsNumAlign8 * sizeof(float))) / (12 + (4 * BUFFER_NUM) + (4 * clsNumAlign8 * BUFFER_NUM)) / 8 * 8;
-    // uint32_t bigCoreTileLen = 1;
+    uint32_t smallCoreBatchSize = batchSize / coreNum;
+    uint32_t smallCoreTileLen = tileLen;
+    if (smallCoreTileLen > smallCoreBatchSize) {
+        smallCoreTileLen = smallCoreBatchSize;
+    }
+    uint32_t smallCoreTileNum = smallCoreBatchSize / smallCoreTileLen;
+    uint32_t smallCoreTailTileLen = smallCoreBatchSize % smallCoreTileLen;
+    tiling.set_smallCoreTileLen(smallCoreTileLen);
+    tiling.set_smallCoreTileNum(smallCoreTileNum);
+    tiling.set_smallCoreTailTileLen(smallCoreTailTileLen);
+    tiling.set_smallCoreBatchSize(smallCoreBatchSize);
+
+    uint32_t bigCoreBatchSize = (remainBatch == 0) ? smallCoreBatchSize : (smallCoreBatchSize + 1);
+    uint32_t bigCoreTileLen = tileLen;
     if (bigCoreTileLen > bigCoreBatchSize) {
         bigCoreTileLen = bigCoreBatchSize;
     }
@@ -46,6 +61,19 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     tiling.set_bigCoreTailTileLen(bigCoreTailTileLen);
     tiling.set_bigCoreBatchSize(bigCoreBatchSize);
     tiling.set_clsNum(clsNum);
+
+    // printf("batchSize: %u\n", batchSize);
+    // printf("coreNum: %d\n", coreNum);
+
+    // printf("bigCoreNum: %u\n", bigCoreNum);
+    // printf("bigCoreTileLen: %u\n", bigCoreTileLen);
+    // printf("bigCoreTileNum: %u\n", bigCoreTileNum);
+    // printf("bigCoreTailTileLen: %u\n", bigCoreTailTileLen);
+    // printf("bigCoreBatchSize: %u\n", bigCoreBatchSize);
+    // printf("smallCoreTileLen: %u\n", smallCoreTileLen);
+    // printf("smallCoreTileNum: %u\n", smallCoreTileNum);
+    // printf("smallCoreTailTileLen: %u\n", smallCoreTailTileLen);
+    // printf("smallCoreBatchSize: %u\n", smallCoreBatchSize);
 
     auto attrs = context->GetAttrs();
     const char* reduceStr = attrs->GetStr(0);
@@ -58,7 +86,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
         context->GetRawTilingData()->GetData(),
         context->GetRawTilingData()->GetCapacity()
     );
-    context->SetBlockDim(BLOCK_DIM);
+    context->SetBlockDim(coreNum);
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
 
     uint32_t sysWorkspaceSize = platform.GetLibApiWorkSpaceSize();

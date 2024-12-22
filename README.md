@@ -15,4 +15,6 @@
 
 ## 性能赛道
 
-TODO
+| 序号 | Op | (case 5) 性能测试 (us) | 状态 |
+| ----- | ----- | ----- | ----- | ----- |
+| 3 | [NLLLoss](perf/nll_loss/README.md) | 15.28 | Passed |

@@ -27,7 +27,7 @@ public:
         uint32_t coreIdx = GetBlockIdx();
         uint32_t bigCoreNum = tiling->bigCoreNum;
         uint32_t bigCoreBatchSize = tiling->bigCoreBatchSize;
-        uint32_t batchIdx = batchSize * coreIdx;
+        uint32_t batchIdx = bigCoreBatchSize * coreIdx;
         // 小核
         if (coreIdx >= bigCoreNum) {
             uint32_t smallCoreBatchSize = tiling->smallCoreBatchSize;
@@ -51,10 +51,10 @@ public:
         targetGm.SetGlobalBuffer((__gm__ int32_t *)target + batchIdx, batchSize);
         weightGm.SetGlobalBuffer((__gm__ float *)weight);
         yGm.SetGlobalBuffer((__gm__ float *)y);
-        workspaceGm.SetGlobalBuffer((__gm__ float *)workspace);
+        workspaceGm.SetGlobalBuffer((__gm__ float *)workspace + coreIdx);
         pipe->InitBuffer(xQueue, BUFFER_NUM, (tileLen * clsNum + 7) / 8 * 8 * sizeof(float));
-        pipe->InitBuffer(yQueue, BUFFER_NUM, BLOCK_SIZE);
-        pipe->InitBuffer(weightSumQ, BUFFER_NUM, BLOCK_SIZE);
+        pipe->InitBuffer(yQueue, BUFFER_NUM, GetBlockNum() * sizeof(float));
+        pipe->InitBuffer(weightSumQ, BUFFER_NUM, GetBlockNum() * sizeof(float));
         pipe->InitBuffer(targetQ, BUFFER_NUM, (tileLen + 7) / 8 * 8 * sizeof(float));
         pipe->InitBuffer(weightQ, 1, (clsNum + 7) / 8 * 8 * sizeof(float));
         pipe->InitBuffer(indicesBuf, tileLen * sizeof(int32_t));
@@ -64,18 +64,9 @@ public:
         LocalTensor<int32_t> indices = indicesBuf.Get<int32_t>();
         CreateVecIndex(indices, 0, tileLen);
         Muls(indices, indices, int32_t(4 * clsNum), tileLen);
-        // if (coreIdx == 0) {
-        //     yGm.SetValue(0, .0f);
-        //     workspaceGm.SetValue(0, .0f);
-        // }
     }
 
     __aicore__ inline void Process() {
-        // printf("batchSize: %u\n", batchSize);
-        // printf("tileLen: %u\n", tileLen);
-        // printf("tileNum: %u\n", tileNum);
-        // printf("tailTileLen: %u\n", tailTileLen);
-        // printf("clsNum: %u\n", clsNum);
         uint64_t xOffset = 0;
         uint64_t targetOffset = 0;
         CopyWeight();
@@ -84,7 +75,6 @@ public:
             CopyX(xOffset, tileLen * clsNum, 1);
             CopyTarget(targetOffset, tileLen, 1);
             Compute(tileLen);
-            CopyOut();
             xOffset += tileLen * clsNum;
             targetOffset += tileLen;
         }
@@ -92,23 +82,33 @@ public:
             CopyX(xOffset, tailTileLen * clsNum, 1);
             CopyTarget(targetOffset, tailTileLen, 1);
             Compute(tailTileLen);
-            CopyOut();
         }
         weightQ.FreeTensor(weight);
-        // if (reduce == 1 && GetBlockIdx() == 0) {
-        //     // SyncAll();
-        //     DataCacheCleanAndInvalid<float, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(yGm);
-        //     DataCacheCleanAndInvalid<float, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(workspaceGm);
-        //     float score = yGm.GetValue(0);
-        //     float deno = workspaceGm.GetValue(0);
-        //     // printf("score: %f, deno: %f\n", score, deno);
-        //     yGm.SetValue(0, score / deno);
-        // }
-        if (reduce == 0) {
-            yGm.SetValue(0, scoreVal);
+        LocalTensor<float> score = yQueue.AllocTensor<float>();
+        score.SetValue(0, -scoreVal);
+        yQueue.EnQue<float>(score);
+        if (reduce == 1) {
+            LocalTensor<float> weightSum = weightSumQ.AllocTensor<float>();
+            weightSum.SetValue(0, weightVal);
+            weightSumQ.EnQue<float>(weightSum);
         }
-        else {
-            yGm.SetValue(0, scoreVal / weightVal);
+        CopyOut();
+        SyncAll();
+        if (GetBlockIdx() == 0) {
+            DataCacheCleanAndInvalid<float, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(workspaceGm);
+            float scoreSum = .0f;
+            uint64_t coreNum = GetBlockNum();
+            for (int i = 0;  i < coreNum; i++) {
+                scoreSum += workspaceGm.GetValue(i);
+            }
+            if (reduce == 1) {
+                float weightSum = .0f;
+                for (int i = 0;  i < coreNum; i++) {
+                    weightSum += workspaceGm.GetValue(coreNum + i);
+                }
+                scoreSum /= weightSum;
+            }
+            yGm.SetValue(0, scoreSum);
         }
     }
 
@@ -141,7 +141,6 @@ private:
     }
 
     __aicore__ inline void Compute(int computeLen) {
-        LocalTensor<float> y = yQueue.AllocTensor<float>();
         LocalTensor<float> x = xQueue.DeQue<float>();
         LocalTensor<int32_t> target = targetQ.DeQue<int32_t>();
         LocalTensor<int32_t> indices = indicesBuf.Get<int32_t>();
@@ -150,22 +149,18 @@ private:
         Muls(target, target, 4, computeLen);
         Gather(work1, weight, target.ReinterpretCast<uint32_t>(), uint32_t(0), computeLen);
         if (reduce == 1) {
-            LocalTensor<float> weightSum = weightSumQ.AllocTensor<float>();
             LocalTensor<float> work2 = buf2.Get<float>();
-            ReduceSum(weightSum, work1, work2, computeLen);
-            weightVal += weightSum.GetValue(0);
-            weightSumQ.EnQue<float>(weightSum);
+            ReduceSum(work2, work1, work2, computeLen);
+            weightVal += work2.GetValue(0);
         }
         // 计算索引
         Add(target, target, indices, computeLen);
         // 收集分数值
         Gather(x, x, target.ReinterpretCast<uint32_t>(), uint32_t(0), computeLen);
         Mul(x, x, work1, computeLen);
-        ReduceSum(y, x, work1, computeLen);
-        Muls(y, y, -1.0f, 1);
-        scoreVal += y.GetValue(0);
+        ReduceSum(x, x, work1, computeLen);
+        scoreVal += x.GetValue(0);
 
-        yQueue.EnQue<float>(y);
         xQueue.FreeTensor(x);
         targetQ.FreeTensor(target);
     }
@@ -173,15 +168,13 @@ private:
     __aicore__ inline void CopyOut() {
         LocalTensor<float> y = yQueue.DeQue<float>();
         DataCopyExtParams copyParams {(uint16_t)1, (uint32_t)4, 0, 0, 0};
-        SetAtomicAdd<float>();
-        // DataCopyPad(yGm, y, copyParams);
+        DataCopyPad(workspaceGm, y, copyParams);
+        yQueue.FreeTensor(y);
         if (reduce == 1) {
             LocalTensor<float> weightSum = weightSumQ.DeQue<float>();
-            // DataCopyPad(workspaceGm, weightSum, copyParams);
+            DataCopyPad(workspaceGm[GetBlockNum()], weightSum, copyParams);
             weightSumQ.FreeTensor(weightSum);
         }
-        SetAtomicNone();
-        yQueue.FreeTensor(y);
     }
 
 private:
