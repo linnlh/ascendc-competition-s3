@@ -9,9 +9,9 @@ import os
 
 
 def gen_golden_data_simple():
-    input_x = np.random.uniform(-3, 3, [8, 16, 32, 64]).astype(np.float32)
+    input_x = np.random.uniform(-3, 3, [7, 27, 53, 39]).astype(np.float32)
     result=t.tensor(input_x)
-    result = t.logsumexp(result,[0, 3])
+    result = t.logsumexp(result,[0, 1])
     golden = (result.numpy()).astype(np.float32)
     # print(golden)
     os.system("mkdir -p input")

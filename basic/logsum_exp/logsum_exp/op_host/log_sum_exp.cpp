@@ -1,4 +1,6 @@
 
+#include <algorithm>
+
 #include "log_sum_exp_tiling.h"
 #include "register/op_def_registry.h"
 #include "graph/utils/type_utils.h"
@@ -25,8 +27,9 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
 
     LogSumExpTilingData tiling;
     auto shape = context->GetInputShape(0)->GetStorageShape();
+    int64_t shapeDim = shape.GetDimNum();
     int64_t shapePtr[10];
-    for (int i = 0; i < shape.GetDimNum(); i++) {
+    for (int i = 0; i < shapeDim; i++) {
         shapePtr[i] = shape.GetDim(i);
     }
 
@@ -48,17 +51,45 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
             stridesPtr[i] /= shapePtr[j];
         }
     }
-    // 确保 dim[0] < dim[1]
+    // 合并连续的轴
+    // std::sort(dimPtr, dimPtr + dimSize);
+    // std::sort(stridesPtr, stridesPtr + dimSize, std::greater<int>());
+    // int index = 0;
+    // while (index < dimSize - 1) {
+    //     int64_t axis = dimPtr[index];
+    //     if (axis + 1 == dimPtr[index + 1]) {
+    //         stridesPtr[index] = stridesPtr[index + 1];
+    //         for (int j = index + 1; j < dimSize - 1; j++) {
+    //             dimPtr[j] = dimPtr[j + 1] - 1;
+    //             stridesPtr[j] = stridesPtr[j + 1];
+    //         }
+    //         shapePtr[axis] *= shapePtr[axis + 1];
+    //         for (int j = axis + 1; j < shapeDim - 1; j++) {
+    //             shapePtr[j] = shapePtr[j + 1];
+    //         }
+    //         dimSize -= 1;
+    //         shapeDim -= 1;
+    //     }
+    //     else {
+    //         index++;
+    //     }
+    // }
     if (dimSize == 2 && dimPtr[0] > dimPtr[1]) {
         std::swap<int64_t>(dimPtr[0], dimPtr[1]);
         std::swap<int64_t>(stridesPtr[0], stridesPtr[1]);
     }
-    int64_t tileLen = shape.GetDim(dimPtr[dimSize - 1]);
+    int64_t tileLen = shapePtr[dimPtr[dimSize - 1]];
+
+    int64_t tilingKey = 1;
+    if (dimSize == 2 && dimPtr[1] != shapeDim - 1) {
+        tileLen = 1;
+        tilingKey = 2;
+    }
 
     tiling.set_tileLen(tileLen);
     tiling.set_tileNum(tileNum);
     tiling.set_shape(shapePtr);
-    tiling.set_shapeLen(shape.GetDimNum());
+    tiling.set_shapeLen(shapeDim);
     tiling.set_dim(dimPtr);
     tiling.set_strides(stridesPtr);
     tiling.set_dimLen(dimSize);
@@ -67,6 +98,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
         context->GetRawTilingData()->GetData(),
         context->GetRawTilingData()->GetCapacity()
     );
+    context->SetTilingKey(tilingKey);
     context->SetBlockDim(BLOCK_DIM);
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
 

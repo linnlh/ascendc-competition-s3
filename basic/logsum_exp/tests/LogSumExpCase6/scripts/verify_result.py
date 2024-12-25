@@ -6,8 +6,8 @@ loss = 1e-3 # 容忍偏差，一般fp16要求绝对误差和相对误差均不�
 minimum = 10e-10
 
 def verify_result(real_result, golden):
-    real_result = np.fromfile(real_result, dtype=np.float32) # 从bin文件读取实际运算结果
-    golden = np.fromfile(golden, dtype=np.float32) # 从bin文件读取预期运算结果
+    real_result = np.fromfile(real_result, dtype=np.float16) # 从bin文件读取实际运算结果
+    golden = np.fromfile(golden, dtype=np.float16) # 从bin文件读取预期运算结果
     result = np.abs(real_result - golden) # 计算运算结果和预期结果偏差
     deno = np.maximum(np.abs(real_result), np.abs(golden))  # 获取最大值并组成新数组
     result_atol = np.less_equal(result, loss) # 计算绝对误差
