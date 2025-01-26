@@ -5,6 +5,7 @@
 
 | 序号 | Op | (case 5) 性能测试 | benchmark | 状态 |
 | ----- | ----- | ----- | ----- | ----- |
+| 1 | [Softmax](basic/softmax/README.md) | 6897.02 | 530.4 | 4/5 |
 | 2 | [Div](basic/div/README.md) | 1592.04 | 1760.2752 | Passed |
 | 3 | [NotEqual](basic/not_equal/README.md) | 1272.23 | 2799.0744 | Passed |
 | 4 | [Asinh](basic/asinh/README.md) | 3207.77 | 5625.8748 | Passed |
