@@ -12,6 +12,7 @@
 | 6 | [ScatterElements](basic/scatter_elements/README.md) | 4841.79 | 8993.2152 | Passed |
 | 7 | [NonMaxSuppression](basic/non_max_suppression/README.md) | 9025.15 | 40353.77016 | Passed |
 | 8 | [IsClose](basic/is_close/README.md) | 3511.83 | 32354.4 | Passed |
+| 9 | [LogSumExp](basic/logsum_exp/README.md) | 321611.44 | 43584.424 | 4/5 |
 | 10 | [ReplicationPad2d](basic/replication_pad2d/README.md) | 3462.94 | 4594.56 | Passed |
 
 ## 性能赛道
